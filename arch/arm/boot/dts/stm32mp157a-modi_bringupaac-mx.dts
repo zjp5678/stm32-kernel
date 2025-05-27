@@ -21,7 +21,7 @@
 
 	aliases {
 		serial0 = &uart4;
-		serial1 = &usart3;
+		serial2 = &usart3;
 	};
 
 	vddcore: regulator-vddcore {
@@ -475,25 +475,15 @@ TP_RST		PZ7
 	pinctrl-1 = <&spi5_sleep_pins_a>;
 	#address-cells = <1>;
 	#size-cells = <0>;
-	cs-gpios = <&gpiof 6 GPIO_ACTIVE_LOW>;	
-	dmas = <&dmamux1 85 0x400 0x01>,
-			<&dmamux1 86 0x400 0x01>;
-	dma-names = "rx", "tx";
-
-	//  spidev@0 {
-    //     compatible = "rohm,dh2228fv";
-    //     reg = <0>; /* Chip Select 0 */
-    //     spi-max-frequency = <5000000>; /* 最大频率 */
-    // };
+	cs-gpios = <&gpiof 6 GPIO_ACTIVE_LOW>;
 
 	ICNF: ICNF7312BL@0{
 		compatible = "chipone,fp7312";
-		spi-max-frequency = <10000000>;
+		spi-max-frequency = <8000000>;
 		reg = <0>;
-		interrupt-parent = <&gpiob>; //MODI,STM32MP157平台，中断在gpioz组内，编号为6.
-		interrupts = <2 0x02>; // reference: interrupts = <6 IRQ_TYPE_EDGE_RISING>; //GPIOZ-6 pin. 中断触发方式为上升沿.
-		irq-gpio = <&gpiob 2 0x02>; /* 定义触摸屏中断引脚. MODI, PZ6. */
+		interrupt-parent = <&gpiob>;	//MODI,STM32MP157平台，中断在gpioz组内，编号为6.
+        	interrupts = <2 0x02>;	// reference: interrupts = <6 IRQ_TYPE_EDGE_RISING>; //GPIOZ-6 pin. 中断触发方式为上升沿.
+        	irq-gpio = <&gpiob 2 0x02>;		/* 定义触摸屏中断引脚. MODI, PZ6. */
 		reset-gpios = <&gpioa 10 GPIO_ACTIVE_HIGH>;
 	}; 
-	
 };
