@@ -1,0 +1,19 @@
+config TOUCHSCREEN_HYNITRON 
+	tristate "Hynitron Touchscreen Driver"
+	depends on INPUT && TOUCHSCREEN
+	help
+	  Say Y here if you want to enable support for Hynitron touchscreen
+	  controllers.
+
+	  This driver supports multiple Hynitron chip families, including:
+	    - CST66XX
+	    - CST3240
+	    - CST92XX
+	    - CST3XX
+	    - CST7XX
+	    - CST8XXT
+	    - CST226SE
+	    - CST36XXES
+
+	  To compile this driver as a module, choose M here: the module will be
+	  called hynitron_touch.

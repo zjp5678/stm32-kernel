@@ -1,0 +1,499 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
+/*
+ * Copyright (C) STMicroelectronics 2022 - All Rights Reserved
+ * Author: Alexandre Torgue <alexandre.torgue@foss.st.com> for STMicroelectronics.
+ */
+/dts-v1/;
+
+#include "stm32mp157.dtsi"
+#include "stm32mp15xa.dtsi"
+#include "stm32mp15-pinctrl.dtsi"
+#include "stm32mp15xxaa-pinctrl.dtsi"
+#include "stm32mp15-m4-srm.dtsi"
+#include "stm32mp15-m4-srm-pinctrl.dtsi"
+#include "stm32mp157a-ed1-scmi.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/mfd/st,stpmic1.h>
+
+/ {
+	model = "STMicroelectronics STM32MP157A eval daughter-0425";
+	compatible = "st,stm32mp157a-ed1", "st,stm32mp157";
+
+	aliases {
+		serial0 = &uart4;
+		serial1 = &usart3;
+	};
+
+	vddcore: regulator-vddcore {
+        compatible = "regulator-fixed";
+        regulator-name = "vddcore";
+        regulator-min-microvolt = <1200000>;
+        regulator-max-microvolt = <1350000>;
+        regulator-off-in-suspend;
+        regulator-always-on;
+    };
+    
+	v3v3: regulator-3p3v {
+        compatible = "regulator-fixed";
+        regulator-name = "v3v3";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        regulator-off-in-suspend;
+        regulator-always-on;
+    };
+    
+    vdd: regulator-vdd {
+        compatible = "regulator-fixed";
+        regulator-name = "vdd";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        regulator-off-in-suspend;
+        regulator-always-on;
+    };
+
+    vdd_usb: regulator-vdd-usb {
+        compatible = "regulator-fixed";
+        regulator-name = "vdd_usb";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        regulator-off-in-suspend;
+        regulator-always-on;
+    };    	
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	//add by jack.
+	panel_backlight: panel-backlight {
+		compatible = "gpio-backlight";
+		gpios = <&gpioa 15 GPIO_ACTIVE_LOW>;
+		default-on;
+		status = "disabled";
+	};
+
+	memory@c0000000 {
+		device_type = "memory";
+		reg = <0xc0000000 0x10000000>; //modi: 0x10000000, native: 0x40000000
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		mcuram2: mcuram2@10000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10000000 0x40000>;
+			no-map;
+		};
+
+		vdev0vring0: vdev0vring0@10040000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10040000 0x1000>;
+			no-map;
+		};
+
+		vdev0vring1: vdev0vring1@10041000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10041000 0x1000>;
+			no-map;
+		};
+
+		vdev0buffer: vdev0buffer@10042000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10042000 0x4000>;
+			no-map;
+		};
+
+		mcu_rsc_table: mcu-rsc-table@10048000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10048000 0x8000>;
+			no-map;
+		};
+
+		mcuram: mcuram@30000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x30000000 0x40000>;
+			no-map;
+		};
+
+		retram: retram@38000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x38000000 0x10000>;
+			no-map;
+		};
+
+		gpu_reserved: gpu@e8000000 {
+			reg = <0xe8000000 0x8000000>;
+			no-map;
+		};
+
+		/* global autoconfigured region for contiguous allocations */
+		linux,cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x8000000>;
+			alignment = <0x2000>;
+			linux,cma-default;
+		};
+	};
+
+	led {
+		compatible = "gpio-leds";
+		led-blue {
+			label = "heartbeat";
+			//gpios = <&gpiod 9 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+			default-state = "off";
+		};
+	};
+
+	sd_switch: regulator-sd-switch {
+		compatible = "regulator-gpio";
+		regulator-name = "sd_switch";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <2900000>;
+		regulator-type = "voltage";
+		regulator-always-on;
+
+		gpios = <&gpiof 14 GPIO_ACTIVE_HIGH>;
+		gpios-states = <0>;
+		states = <1800000 0x1>,
+			 <2900000 0x0>;
+	};
+
+	vin: vin {
+		compatible = "regulator-fixed";
+		regulator-name = "vin";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+	};
+
+	//gpio模拟i2c总线，linux驱动. CONFIG_I2C_GPIO.
+	//I2C4_SCL 	PZ4
+	//I2C4_SDA	PZ5
+	// i2c_gpio: i2c-gpio {
+	// 	compatible = "i2c-gpio";
+	// 	pinctrl-names = "default";
+	// 	//pinctrl-0 = <&i2c4_pins_a>;
+	// 	gpios = <&gpioz 5 GPIO_ACTIVE_HIGH>, /* sda, 使用gpioz5 */
+	// 	<&gpioz 4 GPIO_ACTIVE_HIGH>; /* scl, 使用gpioz4 */
+	// 	i2c-gpio,delay-us = <50>;
+	// 	status = "okay";
+	// 	#address-cells = <1>;
+	// 	#size-cells = <0>;
+
+	// 	hynitron@15{
+
+	// 		//参考hynitron驱动内的readme.txt文件，MODI产品屏模组touchscreen驱动芯片cst836u, 驱动内对应配置如下：
+	// 		// {.compatible = "hyn,7xx",  .data = &cst7xx_fuc,},    /*suport 726、826、836u*/
+	// 		compatible = "hyn,7xx";	 /*suport 726、826、836u*/
+	// 		reg = <0x15>; // i2c地址.
+			
+	// 		interrupt-parent = <&gpioz>;	//MODI,STM32MP157平台，中断在gpioz组内，编号为6.
+	// 		interrupts = <6 0x02>;	// reference: interrupts = <6 IRQ_TYPE_EDGE_RISING>; //GPIOZ-6 pin. 中断触发方式为上升沿.
+	// 		reset-gpio = <&gpioz 7 0x01>; 	/* 触摸屏复位. MODI, PZ7.*/
+	// 		irq-gpio = <&gpioz 6 0x02>;		/* 定义触摸屏中断引脚. MODI, PZ6. */
+		
+	// 		//panel = <&dsi_1080p_video>;	//CONFIG_DRM_PANEL 需要配置
+	// 		panel = <&display>;			/* 关联显示panel面板.*/
+
+	// 		max-touch-number = <5>; 	/*最多5点触摸.*/
+	// 		display-coords = <0 0 480 800>;	/*MODI, 480x800, default: display-coords = <0 0 800 1280>;*/
+	// 		pos-swap = <0>;     	//xy坐标交换
+	// 		posx-reverse = <0>; 	//x坐标反向
+	// 		posy-reverse = <0>; 	//y坐标反向
+
+	// 	};
+
+		// sgtl5000: codec@a {
+		// 	compatible = "fsl,sgtl5000";
+		// 	reg = <0x0a>;
+		// 	clocks = <&clk_26M_snd>;
+		// 	VDDA-supply = <&vdig_reg>;
+		// 	VDDIO-supply = <&vvideo_reg>;
+		// 	#sound-dai-cells = <0>;
+		// };
+	// };
+
+};
+
+&adc {
+	/* ANA0, ANA1 are dedicated pins and don't need pinctrl: only in6. */
+	pinctrl-0 = <&adc1_in6_pins_a>;
+	pinctrl-names = "default";
+	vdd-supply = <&vdd>;
+	vdda-supply = <&vdd>;
+	vref-supply = <&vdd>;
+	status = "okay";
+	adc1: adc@0 {
+		status = "okay";
+		
+		channel@4 {
+			reg = <4>;
+			st,adc-channels = <4>;
+			//st,min-sample-time-ns = <400>;
+			st,min-sample-time-nsecs = <400>;
+		};
+		
+	};
+};
+
+&arm_wdt {
+	timeout-sec = <32>;
+	status = "okay";
+};
+
+&crc1 {
+	status = "okay";
+};
+
+// &dac {
+// 	pinctrl-names = "default";
+// 	pinctrl-0 = <&dac_ch1_pins_a &dac_ch2_pins_a>;
+// 	//vref-supply = <&vdda>;
+// 	status = "disabled";
+// 	dac1: dac@1 {
+// 		status = "okay";
+// 	};
+// 	dac2: dac@2 {
+// 		status = "okay";
+// 	};
+// };
+
+&dts {
+	status = "okay";
+};
+
+&gpu {
+	contiguous-area = <&gpu_reserved>;
+};
+
+&hash1 {
+	status = "okay";
+};
+
+/*
+//tp
+I2C4_SCL 	PZ4
+I2C4_SDA	PZ5
+TP_INT		PZ6
+TP_RST		PZ7
+*/
+&i2c4 {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&i2c4_pins_a>;
+	pinctrl-1 = <&i2c4_sleep_pins_a>;
+	//i2c-scl-rising-time-ns = <185>;
+	//i2c-scl-falling-time-ns = <20>;
+	clock-frequency = <400000>;
+	/* spare dmas for other usage */
+	///delete-property/dmas;
+	///delete-property/dma-names;
+	status = "okay";
+
+	hynitron@15{
+
+		//参考hynitron驱动内的readme.txt文件，MODI产品屏模组touchscreen驱动芯片cst836u, 驱动内对应配置如下：
+		// {.compatible = "hyn,7xx",  .data = &cst7xx_fuc,},    /*suport 726、826、836u*/
+		compatible = "hyn,7xx";	 /*suport 726、826、836u*/
+		reg = <0x15>; // i2c地址.
+		
+		interrupt-parent = <&gpioz>;	//MODI,STM32MP157平台，中断在gpioz组内，编号为6.
+        	interrupts = <6 0x02>;	// reference: interrupts = <6 IRQ_TYPE_EDGE_RISING>; //GPIOZ-6 pin. 中断触发方式为上升沿.
+        	reset-gpio = <&gpioz 7 0x01>; 	/* 触摸屏复位. MODI, PZ7.*/
+        	irq-gpio = <&gpioz 6 0x02>;		/* 定义触摸屏中断引脚. MODI, PZ6. */
+        
+        	//panel = <&dsi_1080p_video>;	//CONFIG_DRM_PANEL 需要配置
+		panel = <&display>;			/* 关联显示panel面板.*/
+
+        	max-touch-number = <5>; 	/*最多5点触摸.*/
+        	display-coords = <0 0 480 800>;	/*MODI, 480x800, default: display-coords = <0 0 800 1280>;*/
+		pos-swap = <0>;     	//xy坐标交换
+		posx-reverse = <0>; 	//x坐标反向
+		posy-reverse = <0>; 	//y坐标反向
+
+	};
+};
+
+&ipcc {
+	status = "okay";
+};
+
+&m4_rproc {
+	memory-region = <&retram>, <&mcuram>, <&mcuram2>, <&vdev0vring0>,
+			<&vdev0vring1>, <&vdev0buffer>, <&mcu_rsc_table>;
+	mboxes = <&ipcc 0>, <&ipcc 1>, <&ipcc 2>, <&ipcc 3>;
+	mbox-names = "vq0", "vq1", "shutdown", "detach";
+	interrupt-parent = <&exti>;
+	interrupts = <68 1>;
+	wakeup-source;
+	status = "okay";
+};
+
+&pwr_regulators {
+	vdd-supply = <&vdd>;
+	vdd_3v3_usbfs-supply = <&vdd_usb>;
+};
+
+&rtc {
+	status = "okay";
+};
+
+&sdmmc1 {
+	pinctrl-names = "default", "opendrain", "sleep";
+	pinctrl-0 = <&sdmmc1_b4_pins_a &sdmmc1_dir_pins_a>;
+	pinctrl-1 = <&sdmmc1_b4_od_pins_a &sdmmc1_dir_pins_a>;
+	pinctrl-2 = <&sdmmc1_b4_sleep_pins_a &sdmmc1_dir_sleep_pins_a>;
+	cd-gpios = <&gpiog 1 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+	disable-wp;
+	st,sig-dir;
+	st,neg-edge;
+	st,use-ckin;
+	bus-width = <4>;
+	//vmmc-supply = <&vdd_sd>;
+	vqmmc-supply = <&sd_switch>;
+	sd-uhs-sdr12;
+	sd-uhs-sdr25;
+	sd-uhs-sdr50;
+	sd-uhs-ddr50;
+	status = "disabled";
+};
+
+&sdmmc2 {
+	pinctrl-names = "default", "opendrain", "sleep";
+	pinctrl-0 = <&sdmmc2_pins_modi>;
+	pinctrl-1 = <&sdmmc2_opendrain_pins_modi>;
+	pinctrl-2 = <&sdmmc2_sleep_pins_modi>;
+	//pinctrl-0 = <&sdmmc2_b4_pins_a &sdmmc2_d47_pins_a>;
+	//pinctrl-1 = <&sdmmc2_b4_od_pins_a &sdmmc2_d47_pins_a>;
+	//pinctrl-2 = <&sdmmc2_b4_sleep_pins_a &sdmmc2_d47_sleep_pins_a>;
+	status = "okay";
+	non-removable;
+	no-sd;
+	no-sdio;
+	bus-width = <8>;
+	st,neg-edge;
+	mmc-ddr-3_3v;
+	max-frequency = <50000000>;
+	vqmmc-supply = <&v3v3>;
+	vmmc-supply = <&v3v3>;
+};
+
+&timers6 {
+	status = "okay";
+	/* spare dmas for other usage */
+	/delete-property/dmas;
+	/delete-property/dma-names;
+	timer@5 {
+		status = "okay";
+	};
+};
+
+&usart3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&usart3_pins_a>;
+	status = "okay";
+};
+
+&uart4 {
+	pinctrl-names = "default", "sleep", "idle";
+	pinctrl-0 = <&uart4_pins_a>;
+	//pinctrl-1 = <&uart4_sleep_pins_a>;
+	//pinctrl-2 = <&uart4_idle_pins_a>;
+	/delete-property/dmas;
+	/delete-property/dma-names;
+	status = "okay";
+};
+
+&usbotg_hs {
+	//vbus-supply = <&vbus_otg>;
+	status = "okay";
+	/* USER CODE BEGIN usbotg_hs */
+	phys = <&usbphyc_port1 0>;
+	phy-names = "usb2-phy";
+	usb-role-switch;
+	/* USER CODE END usbotg_hs */
+};
+
+&usbphyc_port0 {
+	phy-supply = <&vdd_usb>;
+};
+
+&usbphyc_port1 {
+	phy-supply = <&vdd_usb>;
+};
+
+
+&ltdc {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&ltdc_pins_a>;
+	pinctrl-1 = <&ltdc_sleep_pins_a>;
+	buffer-size = <0x80000>; // 512kb memory -> framebuffer
+	status = "okay";
+
+    port {
+		ltdc_out_rgb: endpoint {
+			remote-endpoint = <&panel_in_rgb>;
+		};
+    };
+};
+
+&spi1 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi1_pins_b>;
+	pinctrl-1 = <&spi1_sleep_pins_b>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>; //modi, rgb-panel sip cs signal: PA4.
+
+	display: display@0{
+		/* Connect panel modi-rgb-panel to ltdc */
+		compatible = "modi,modi-rgb-panel";
+		reg = <0>;
+		spi-3wire;
+		spi-max-frequency = <8000000>; //10000000, 10Mhz. 8000000, 8Mhz
+		//dc-gpios = <&gpiod 13 0>;
+		reset-gpios = <&gpiob 0 GPIO_ACTIVE_LOW>; //lcd,panel reset. modi, PB0.
+		//backlight = <&panel_backlight>;
+    		//data-mapping = "rgb888";
+		port {
+			panel_in_rgb: endpoint {
+				remote-endpoint = <&ltdc_out_rgb>;
+			};
+		};
+	};
+};
+
+&spi5 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi5_pins_a>;
+	pinctrl-1 = <&spi5_sleep_pins_a>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	cs-gpios = <&gpiof 6 GPIO_ACTIVE_LOW>;	
+	dmas = <&dmamux1 85 0x400 0x01>,
+			<&dmamux1 86 0x400 0x01>;
+	dma-names = "rx", "tx";
+
+	//  spidev@0 {
+    //     compatible = "rohm,dh2228fv";
+    //     reg = <0>; /* Chip Select 0 */
+    //     spi-max-frequency = <5000000>; /* 最大频率 */
+    // };
+
+	ICNF: ICNF7312BL@0{
+		compatible = "chipone,fp7312";
+		spi-max-frequency = <10000000>;
+		reg = <0>;
+		interrupt-parent = <&gpiob>; //MODI,STM32MP157平台，中断在gpioz组内，编号为6.
+		interrupts = <2 0x02>; // reference: interrupts = <6 IRQ_TYPE_EDGE_RISING>; //GPIOZ-6 pin. 中断触发方式为上升沿.
+		irq-gpio = <&gpiob 2 0x02>; /* 定义触摸屏中断引脚. MODI, PZ6. */
+		reset-gpios = <&gpioa 10 GPIO_ACTIVE_HIGH>;
+	}; 
+	
+};
